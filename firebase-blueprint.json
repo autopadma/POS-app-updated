@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A product in the inventory",
+      "type": "object",
+      "properties": {
+        "barcode": { "type": "string" },
+        "name": { "type": "string" },
+        "buyPrice": { "type": "number" },
+        "sellPrice": { "type": "number" },
+        "stock": { "type": "number" },
+        "image": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["barcode", "name", "buyPrice", "sellPrice", "stock", "userId", "createdAt", "updatedAt"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "A completed sale transaction",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date-time" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "barcode": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "number" },
+              "buyPrice": { "type": "number" },
+              "sellPrice": { "type": "number" }
+            },
+            "required": ["productId", "barcode", "name", "quantity", "buyPrice", "sellPrice"]
+          }
+        },
+        "totalBuyPrice": { "type": "number" },
+        "totalSellPrice": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "serviceCharge": { "type": "number" },
+        "profit": { "type": "number" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "items", "totalBuyPrice", "totalSellPrice", "profit", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "products": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Collection of products"
+    },
+    "sales": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Collection of sales"
+    }
+  }
+}

@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: products
+    // Document ID: auto-generated
+    // Fields:
+    //   - barcode: string (required)
+    //   - name: string (required)
+    //   - buyPrice: number (required)
+    //   - sellPrice: number (required)
+    //   - stock: number (required)
+    //   - image: string (optional)
+    //   - userId: string (required, immutable)
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: sales
+    // Document ID: auto-generated
+    // Fields:
+    //   - date: timestamp (required)
+    //   - items: list (required)
+    //   - totalBuyPrice: number (required)
+    //   - totalSellPrice: number (required)
+    //   - subtotal: number (optional)
+    //   - discount: number (optional)
+    //   - serviceCharge: number (optional)
+    //   - profit: number (required)
+    //   - customerName: string (optional)
+    //   - customerPhone: string (optional)
+    //   - userId: string (required, immutable)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // ===============================================================
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidNotModified() {
+      return !('userId' in request.resource.data) ||
+        request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validators
+    function isValidProduct() {
+      return hasRequiredFields(['barcode', 'name', 'buyPrice', 'sellPrice', 'stock', 'userId', 'createdAt', 'updatedAt']) &&
+             request.resource.data.barcode is string && request.resource.data.barcode.size() > 0 && request.resource.data.barcode.size() < 100 &&
+             request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() < 200 &&
+             request.resource.data.buyPrice is number && request.resource.data.buyPrice >= 0 &&
+             request.resource.data.sellPrice is number && request.resource.data.sellPrice >= 0 &&
+             request.resource.data.stock is number &&
+             request.resource.data.userId is string && request.resource.data.userId.size() > 0 && request.resource.data.userId.size() < 100 &&
+             request.resource.data.createdAt is timestamp &&
+             request.resource.data.updatedAt is timestamp &&
+             (!('image' in request.resource.data) || (request.resource.data.image is string && request.resource.data.image.size() < 1000000));
+    }
+
+    function isValidSale() {
+      return hasRequiredFields(['date', 'items', 'totalBuyPrice', 'totalSellPrice', 'profit', 'userId', 'createdAt']) &&
+             request.resource.data.date is timestamp &&
+             request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() < 1000 &&
+             request.resource.data.totalBuyPrice is number && request.resource.data.totalBuyPrice >= 0 &&
+             request.resource.data.totalSellPrice is number && request.resource.data.totalSellPrice >= 0 &&
+             request.resource.data.profit is number &&
+             request.resource.data.userId is string && request.resource.data.userId.size() > 0 && request.resource.data.userId.size() < 100 &&
+             request.resource.data.createdAt is timestamp &&
+             (!('subtotal' in request.resource.data) || request.resource.data.subtotal is number) &&
+             (!('discount' in request.resource.data) || request.resource.data.discount is number) &&
+             (!('serviceCharge' in request.resource.data) || request.resource.data.serviceCharge is number) &&
+             (!('customerName' in request.resource.data) || (request.resource.data.customerName is string && request.resource.data.customerName.size() < 100)) &&
+             (!('customerPhone' in request.resource.data) || (request.resource.data.customerPhone is string && request.resource.data.customerPhone.size() < 50));
+    }
+
+    match /products/{productId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidProduct() && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidProduct() && uidNotModified() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isDocOwner();
+    }
+
+    match /sales/{saleId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidSale() && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidSale() && uidNotModified() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isDocOwner();
+    }
+  }
+}
